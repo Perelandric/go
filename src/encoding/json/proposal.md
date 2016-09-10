@@ -3,15 +3,15 @@ This proposal describes a way to define custom criteria for a user-defined type,
 
 ## Motivation
 
-Some user-defined types are able to represent a zero-state that differs from Go's basic zero value definitions. There is no way for these types to be given consideration when `omitempty` is provided as a JSON marshaling option in the field tag of a `struct`. A common example is the type `time.Time`, which has a definite zero-state, yet is included in the encoded result, irrespective of the `omitempty` option.
+It is often desirable or necessary to have a "zero-state" struct field omitted when marshaling to JSON. This is done by providing the field the `omitempty` option in its field tag.
 
-In these cases, it is often desirable or necessary to have the key and value representation omitted when marshaling such a field to JSON. This is currently impossible to do without writing a custom `MarshalJSON` method on every `struct` that has a field that uses such a type.
+Some user-defined types are able to represent a zero-state that differs from Go's basic zero value definitions. It is impossible for these types to be given consideration when the `omitempty` option has been provided. A common example is the type `time.Time`, which has a definite zero-state, yet is included in the encoded result, irrespective of the `omitempty` option.
 
 ## Description
 
 The proposed approach is to use a sentinel error as the error returned from `MarshalJSON` implemented on a type. This approach was previously mentioned by @joeshaw when pursuing an alternate approach, described in #11939.
 
-With this proposal, a developer may communicate the zero-state of a type to the marshaler by returning a pre-defined `json.CanOmit` error from `MarshalJSON`. When the marshaler receives the `json.CanOmit` object while marshaling the field of a `struct`, the key and value for that field will be omitted *if* that field includes the `omitempty` option. If the field does not include `omitempty`, or if the `json.CanOmit` error is returned while that type is not a `struct` field, the `json.CanOmit` is treated as `nil`.
+With this proposal, a developer may communicate the zero-state of a type to the marshaler by returning a predefined `json.CanOmit` error from `MarshalJSON`. When the marshaler receives the `json.CanOmit` object while marshaling the field of a `struct`, the key and value for that field will be omitted *if* that field includes the `omitempty` option. If the field does not include `omitempty`, or if the `json.CanOmit` error is returned while that type is not a `struct` field, the `json.CanOmit` is treated as `nil`.
 
 When returning `json.CanOmit`, the developer *must* also return the fully encoded result of the type in its zero-state.
 
