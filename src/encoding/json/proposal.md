@@ -3,24 +3,24 @@ This proposal describes a way to define custom criteria for a user-defined type,
 
 ## Motivation
 
-It is often desirable or necessary to have a "zero-state" struct field omitted when marshaling to JSON. This is done by providing the field the `omitempty` option in its field tag.
+It is often desirable or necessary for a `struct` field in its "zero-state" to be omitted when marshaling to JSON. This is done by providing the field the `omitempty` option in its field tag.
 
 Some user-defined types are able to represent a zero-state that differs from Go's basic zero value definitions. It is impossible for these types to be given consideration when the `omitempty` option has been provided. A common example is the type `time.Time`, which has a definite zero-state, yet is included in the encoded result, irrespective of the `omitempty` option.
 
 ## Description
 
-The proposed approach is to use a sentinel error as the error returned from `MarshalJSON` implemented on a type. This approach was previously mentioned by @joeshaw when pursuing an alternate approach, described in #11939.
+The proposed approach is to use a sentinel error as the error returned from `MarshalJSON`. This approach was previously mentioned by @joeshaw when pursuing an alternate approach, described in #11939.
 
 With this proposal, a developer may communicate the zero-state of a type to the marshaler by returning a predefined `json.CanOmit` error from `MarshalJSON`. When the marshaler receives the `json.CanOmit` object while marshaling the field of a `struct`, the key and value for that field will be omitted *if* that field includes the `omitempty` option. If the field does not include `omitempty`, or if the `json.CanOmit` error is returned while that type is not a `struct` field, the `json.CanOmit` is treated as `nil`.
 
 When returning `json.CanOmit`, the developer *must* also return the fully encoded result of the type in its zero-state.
 
-If the type that can describe a zero-state is defined in another package, the developer may create an alias for that type, or may embed it in a `struct`, thereby providing the ability to define a `MarshalJSON` method.
+If the type that can describe a zero-state is defined in another package, the developer may create an alias for that type, or may embed it in a `struct`, thereby providing the ability to create a `MarshalJSON` method.
 
 With this approach...
  - the developer of the type is in control of what constitutes a zero-state
  - the user of the type is in control of whether or not to omit the zero-state value
- - there is zero impact on existing code, since it relies on the new `json.CanOmit` object
+ - there is no impact on existing code, since it relies on the new `json.CanOmit` object
  - implementing this feature should have negligible impact on performance of the marshaler
 
 ## Example
@@ -52,6 +52,7 @@ In the above example, `MyTime` immediately marshals its embedded `time.Time`. If
 ## Drawbacks
 
  - The developer must understand that this sentinel object is related specifically to the `omitempty` option on `struct` fields, and that returning it under any other condition is effectively returning `nil`.
+ - If a type in another package does not return `json.CanOmit` when in its zero-state, the developer must resort to aliasing or embedding the desired type, and defining a `MarshalJSON` method on that new type.
 
 ## Alternatives
 
@@ -60,7 +61,5 @@ Other alternatives to this problem have been proposed or mentioned, and can be v
 ## Unresolved questions
 
  - Does this approach make sense for `encoding/xml` as well? Its `Marshaler` interface is different, and appears to offer this level of control already.
-
  - Is there a better name for the sentinel object than `CanOmit`?
-
  - Should the `json.TextMarshaler` interface give the same recognition to the `CanOmit` error?
