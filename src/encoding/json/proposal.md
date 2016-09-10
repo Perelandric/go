@@ -1,9 +1,9 @@
 ## Overview
-This proposal describes a way to define custom criteria for a user-defined type, such that a value of the type will be omitted from JSON marshaling if used as the type of a `struct` field that includes the `omitempty` option.
+This proposal describes a way to define custom criteria for a user-defined type, such that a value of the type will be omitted from JSON marshaling if used on a `struct` field that includes the `omitempty` option.
 
 ## Motivation
 
-It is often desirable or necessary for a `struct` field in its "zero-state" to be omitted when marshaling to JSON. This is done by providing the field the `omitempty` option in its field tag.
+It is often desirable or necessary for a `struct` field in its "zero-state" to be omitted when marshaling to JSON. This is done by giving the field the `omitempty` option in its field tag.
 
 Some user-defined types are able to represent a zero-state that differs from Go's basic zero value definitions. It is impossible for these types to be given consideration when the `omitempty` option has been provided. A common example is the type `time.Time`, which has a definite zero-state, yet is included in the encoded result, irrespective of the `omitempty` option.
 
@@ -35,10 +35,11 @@ type MyTime struct {
 
 // Implement the Marshaler interface
 func (mt MyTime) MarshalJSON() ([]byte, error) {
+  // Marshal the embedded `time.Time`
   res, err := json.Marshal(mt.Time)
 
   if err == nil && mt.IsZero() {
-    // Exclude only from fields with `omitempty`
+    // Exclude from fields that declare `omitempty`
     return res, json.CanOmit
   }
   return res, err
